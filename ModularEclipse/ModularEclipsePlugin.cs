@@ -1,7 +1,5 @@
 ﻿using BepInEx;
 using BepInEx.Configuration;
-using R2API;
-using R2API.Utils;
 using RoR2;
 using System;
 using System.Collections.Generic;
@@ -10,20 +8,10 @@ using System.Security.Permissions;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
 
-#pragma warning disable CS0618 // Type or member is obsolete
-[assembly: SecurityPermission(SecurityAction.RequestMinimum, SkipVerification = true)]
-#pragma warning restore CS0618 // Type or member is obsolete
-[module: System.Security.UnverifiableCode]
-#pragma warning disable 
 namespace ModularEclipse
 {
-    [BepInDependency(R2API.LanguageAPI.PluginGUID, BepInDependency.DependencyFlags.HardDependency)]
-    [BepInDependency(R2API.ContentManagement.R2APIContentManager.PluginGUID, BepInDependency.DependencyFlags.HardDependency)]
-    [BepInDependency(R2API.DamageAPI.PluginGUID, BepInDependency.DependencyFlags.HardDependency)]
-
     [BepInPlugin(guid, modName, version)]
-    [R2APISubmoduleDependency(nameof(LanguageAPI), nameof(ContentAddition), nameof(DamageAPI), nameof(RecalculateStatsAPI))]
-    public class ModularEclipsePlugin
+    public class ModularEclipsePlugin : BaseUnityPlugin
     {
         #region plugin info
         public static PluginInfo PInfo { get; private set; }
@@ -33,12 +21,16 @@ namespace ModularEclipse
         public const string version = "1.0.0";
         #endregion
 
+        internal static ConfigFile ArtifactWhitelistConfig { get; set; }
+        public static void SetArtifactDefaultWhitelist(ArtifactDef artifactDef, bool defaultValue)
+        {
+            ArtifactWhitelistConfig.Bind<bool>("Eclipse: Whitelisted Artifacts", artifactDef.cachedName, defaultValue,
+                    "If true, this artifact will be *allowed* for use in the Eclipse gamemode. Recommended only difficulty artifacts should be enabled.");
+        }
+
         void Awake()
         {
-
-        }
-        private void EclipseLevelSelect()
-        {
+            ArtifactWhitelistConfig = new ConfigFile(Paths.ConfigPath + $"\\{modName}.cfg", true);
             On.RoR2.EclipseRun.OverrideRuleChoices += EclipseRuleChoices;
         }
         private void EclipseRuleChoices(On.RoR2.EclipseRun.orig_OverrideRuleChoices orig, EclipseRun self, RuleChoiceMask mustInclude, RuleChoiceMask mustExclude, ulong runSeed)
@@ -88,7 +80,14 @@ namespace ModularEclipse
             for (int j = 0; j < ArtifactCatalog.artifactCount; j++)
             {
                 ArtifactDef artifactDef = ArtifactCatalog.GetArtifactDef((ArtifactIndex)j);
-                RuleDef ruleDef = RuleCatalog.FindRuleDef("Artifacts." + artifactDef.cachedName);
+                string cachedName = artifactDef.cachedName;
+                Debug.LogWarning(cachedName);
+                //only perform the logic that force disables an artifact if its name is not included in the whitelist
+                bool artifactAllowed = ArtifactWhitelistConfig.Bind<bool>("Eclipse: Whitelisted Artifacts", cachedName, false,
+                    "If true, this artifact will be *allowed* for use in the Eclipse gamemode. Recommended only difficulty artifacts should be enabled.").Value;
+                if (artifactAllowed)
+                    continue;
+                RuleDef ruleDef = RuleCatalog.FindRuleDef("Artifacts." + cachedName);
                 self.ForceChoice(mustInclude, mustExclude, ruleDef.FindChoice("Off"));
             }
         }
