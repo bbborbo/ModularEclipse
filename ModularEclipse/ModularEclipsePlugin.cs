@@ -4,10 +4,16 @@ using RoR2;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Security;
 using System.Security.Permissions;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
 
+#pragma warning disable CS0618 // Type or member is obsolete
+[assembly: SecurityPermission(SecurityAction.RequestMinimum, SkipVerification = true)]
+#pragma warning restore CS0618 // Type or member is obsolete
+[module: UnverifiableCode]
+#pragma warning disable 
 namespace ModularEclipse
 {
     [BepInPlugin(guid, modName, version)]
@@ -92,14 +98,16 @@ namespace ModularEclipse
                     Debug.LogError("Artifact " + artifactDef.nameToken + " has no cached name! The Eclipse rule choice selection will not work for it.");
                     continue;
                 }
-                Debug.LogWarning(cachedName);
-                //only perform the logic that force disables an artifact if its name is not included in the whitelist
+
                 bool artifactAllowed = ArtifactWhitelistConfig.Bind<bool>("Eclipse: Whitelisted Artifacts", cachedName, false,
                     "If true, this artifact will be *allowed* for use in the Eclipse gamemode. Recommended only difficulty artifacts should be enabled.").Value;
-                if (artifactAllowed)
-                    continue;
-                RuleDef ruleDef = RuleCatalog.FindRuleDef("Artifacts." + cachedName);
-                self.ForceChoice(mustInclude, mustExclude, ruleDef.FindChoice("Off"));
+
+                //only perform the logic that force disables an artifact if its name is not included in the whitelist
+                if (!artifactAllowed)
+                {
+                    RuleDef ruleDef = RuleCatalog.FindRuleDef("Artifacts." + cachedName);
+                    self.ForceChoice(mustInclude, mustExclude, ruleDef.FindChoice("Off"));
+                }
             }
         }
     }
