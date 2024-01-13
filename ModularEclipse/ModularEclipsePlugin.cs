@@ -24,7 +24,13 @@ namespace ModularEclipse
         internal static ConfigFile ArtifactWhitelistConfig { get; set; }
         public static void SetArtifactDefaultWhitelist(ArtifactDef artifactDef, bool defaultValue)
         {
-            ArtifactWhitelistConfig.Bind<bool>("Eclipse: Whitelisted Artifacts", artifactDef.cachedName, defaultValue,
+            string cachedName = artifactDef.cachedName;
+            if (cachedName == "")
+            {
+                Debug.LogError("Artifact " + artifactDef.nameToken + " has no cached name! The Eclipse rule choice selection will not work for it.");
+                return;
+            }
+            ArtifactWhitelistConfig.Bind<bool>("Eclipse: Whitelisted Artifacts", cachedName, defaultValue,
                     "If true, this artifact will be *allowed* for use in the Eclipse gamemode. Recommended only difficulty artifacts should be enabled.");
         }
 
@@ -81,6 +87,11 @@ namespace ModularEclipse
             {
                 ArtifactDef artifactDef = ArtifactCatalog.GetArtifactDef((ArtifactIndex)j);
                 string cachedName = artifactDef.cachedName;
+                if(cachedName == "")
+                {
+                    Debug.LogError("Artifact " + artifactDef.nameToken + " has no cached name! The Eclipse rule choice selection will not work for it.");
+                    continue;
+                }
                 Debug.LogWarning(cachedName);
                 //only perform the logic that force disables an artifact if its name is not included in the whitelist
                 bool artifactAllowed = ArtifactWhitelistConfig.Bind<bool>("Eclipse: Whitelisted Artifacts", cachedName, false,
